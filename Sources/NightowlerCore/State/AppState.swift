@@ -129,6 +129,13 @@ public final class AppState: ObservableObject, @unchecked Sendable {
     // MARK: - Mode & Assertion Controls
 
     public func setMode(_ newMode: KeepAwakeMode) {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in
+                self?.setMode(newMode)
+            }
+            return
+        }
+
         lock.lock()
         mode = newMode
         lock.unlock()
@@ -181,21 +188,25 @@ public final class AppState: ObservableObject, @unchecked Sendable {
         }
     }
 
-    public func setClamshell(enabled: Bool) {
+    @discardableResult
+    public func setClamshell(enabled: Bool) -> (success: Bool, error: String?) {
         if enabled {
             let res = clamshell.enableClosedLid()
             if res.success {
-                isClamshellActive = true
                 activity.logEvent(kind: "clamshellOn")
+                return (true, nil)
             } else {
-                whyStoppedReason = res.error ?? "Failed to enable closed-lid mode"
+                DispatchQueue.main.async {
+                    self.whyStoppedReason = res.error ?? "Failed to enable closed-lid mode"
+                    self.updateWhyAwakeReason()
+                }
+                return (false, res.error)
             }
         } else {
-            _ = clamshell.disableClosedLid()
-            isClamshellActive = false
+            let res = clamshell.disableClosedLid()
             activity.logEvent(kind: "clamshellOff")
+            return (res.success, res.error)
         }
-        updateWhyAwakeReason()
     }
 
     public func setSessionTimer(duration: TimeInterval) {
@@ -230,6 +241,13 @@ public final class AppState: ObservableObject, @unchecked Sendable {
     }
 
     public func evaluateAutoState() {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in
+                self?.evaluateAutoState()
+            }
+            return
+        }
+
         guard mode == .autoWatch else { return }
 
         if settings.chargingOnly && !batterySnapshot.isOnACPower {
@@ -264,6 +282,13 @@ public final class AppState: ObservableObject, @unchecked Sendable {
     }
 
     public func setFanMode(_ mode: FanMode) {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in
+                self?.setFanMode(mode)
+            }
+            return
+        }
+
         coolingMode = mode
         _ = smc.setFanMode(mode)
         activity.logEvent(kind: "coolingModeChanged", text: mode.rawValue)
@@ -329,6 +354,13 @@ public final class AppState: ObservableObject, @unchecked Sendable {
     }
 
     public func updateWhyAwakeReason() {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in
+                self?.updateWhyAwakeReason()
+            }
+            return
+        }
+
         if isClamshellActive {
             if !activeTasks.isEmpty {
                 let names = activeTasks.prefix(2).map { $0.name }.joined(separator: ", ")
@@ -373,7 +405,12 @@ public final class AppState: ObservableObject, @unchecked Sendable {
             }
             return self.handleIPCRequest(req)
         }
-        ipc.start()
+        
+        // Only start IPC server when running as the NightowlerApp GUI daemon
+        let isApp = Bundle.main.bundleIdentifier == "com.nightowler.app" || ProcessInfo.processInfo.processName == "Nightowler"
+        if isApp {
+            ipc.start()
+        }
     }
 
     private func handleIPCRequest(_ req: IPCRequest) -> IPCResponse {
@@ -426,17 +463,19 @@ public final class AppState: ObservableObject, @unchecked Sendable {
 
         case "clamshell":
             let sub = req.args?.first?.lowercased() ?? "toggle"
+            let desired: Bool
             if sub == "on" {
-                self.setClamshell(enabled: true)
+                desired = true
             } else if sub == "off" {
-                self.setClamshell(enabled: false)
+                desired = false
             } else {
-                self.setClamshell(enabled: !self.isClamshellActive)
+                desired = !clamshell.isClamshellActive
             }
-            if sub == "on" && !self.isClamshellActive {
-                return IPCResponse(ok: false, message: self.whyStoppedReason.isEmpty ? "Failed to enable clamshell sleep prevention. Run 'nightowler setup'." : self.whyStoppedReason, clamshellActive: false)
+            let res = self.setClamshell(enabled: desired)
+            if !res.success {
+                return IPCResponse(ok: false, message: res.error ?? "Failed to configure closed-lid clamshell mode. Run 'nightowler setup'.", clamshellActive: false)
             }
-            return IPCResponse(ok: true, message: "Clamshell mode: \(self.isClamshellActive ? "ON" : "OFF")", clamshellActive: self.isClamshellActive)
+            return IPCResponse(ok: true, message: "Clamshell mode: \(desired ? "ON" : "OFF")", clamshellActive: desired)
 
         case "autowatch":
             let sub = req.args?.first?.lowercased() ?? "toggle"
