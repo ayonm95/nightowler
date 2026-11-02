@@ -117,24 +117,42 @@ public final class WebhookManager: @unchecked Sendable {
         let message = "🔔 *\(title)*\n\(body)"
 
         // Telegram
-        if cfg.telegramEnabled, !cfg.telegramBotToken.isEmpty, !cfg.telegramChatID.isEmpty {
-            sendTelegram(token: cfg.telegramBotToken, chatID: cfg.telegramChatID, message: message)
+        let sanitizedToken = cfg.telegramBotToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        let tokenRegex = "^[0-9]{8,12}:[a-zA-Z0-9_-]{35}$"
+        let isTokenValid = sanitizedToken.range(of: tokenRegex, options: .regularExpression) != nil
+        if cfg.telegramEnabled, isTokenValid, !cfg.telegramChatID.isEmpty {
+            sendTelegram(token: sanitizedToken, chatID: cfg.telegramChatID, message: message)
         }
 
         // Discord
-        if cfg.discordEnabled, let url = URL(string: cfg.discordWebhookURL) {
+        if cfg.discordEnabled, let url = URL(string: cfg.discordWebhookURL), isValidWebhookURL(url) {
             sendDiscord(url: url, title: title, body: body)
         }
 
         // Slack
-        if cfg.slackEnabled, let url = URL(string: cfg.slackWebhookURL) {
+        if cfg.slackEnabled, let url = URL(string: cfg.slackWebhookURL), isValidWebhookURL(url) {
             sendSlack(url: url, text: "*\(title)*\n\(body)")
         }
 
         // Generic Webhook
-        if cfg.genericEnabled, let url = URL(string: cfg.genericWebhookURL) {
+        if cfg.genericEnabled, let url = URL(string: cfg.genericWebhookURL), isValidWebhookURL(url) {
             sendGenericWebhook(url: url, title: title, body: body)
         }
+    }
+
+    /// Validates outbound webhook URLs against SSRF and non-HTTPS schemes
+    private func isValidWebhookURL(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased(), scheme == "https" else {
+            return false
+        }
+        guard let host = url.host?.lowercased() else {
+            return false
+        }
+        let forbiddenHosts = ["localhost", "127.0.0.1", "::1", "0.0.0.0", "169.254.169.254", "metadata.google.internal"]
+        if forbiddenHosts.contains(host) || host.hasSuffix(".internal") || host.hasSuffix(".local") {
+            return false
+        }
+        return true
     }
 
     private func sendTelegram(token: String, chatID: String, message: String) {

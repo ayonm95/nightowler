@@ -3,6 +3,27 @@ import NightowlerCore
 
 final class HelperServiceDelegate: NSObject, NSXPCListenerDelegate, NightowlerHelperXPCProtocol {
     func listener(_ listener: NSXPCListener, shouldAcceptNewConnection newConnection: NSXPCConnection) -> Bool {
+        // Security Gate: Validate caller credentials
+        let pid = newConnection.processIdentifier
+        guard pid > 0 else { return false }
+
+        // Restrict access to root and the active local console user
+        if getuid() == 0 {
+            var info = proc_bsdinfo()
+            let size = proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, Int32(MemoryLayout<proc_bsdinfo>.size))
+            if size > 0 {
+                let callerUID = info.pbi_uid
+                var statBuf = stat()
+                if stat("/dev/console", &statBuf) == 0 {
+                    let consoleUID = statBuf.st_uid
+                    if callerUID != 0 && callerUID != consoleUID {
+                        fputs("NightowlerHelper: Unauthorized connection attempt rejected from UID \(callerUID)\n", stderr)
+                        return false
+                    }
+                }
+            }
+        }
+
         newConnection.exportedInterface = NSXPCInterface(with: NightowlerHelperXPCProtocol.self)
         newConnection.exportedObject = self
         newConnection.resume()

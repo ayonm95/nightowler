@@ -307,7 +307,11 @@ public final class SMCController: @unchecked Sendable {
     }
 
     public func setFanTargetRPM(fanIndex: Int, rpm: Int) -> Bool {
-        let bytes = encodeFPE2(rpm)
+        let count = getFanCount()
+        guard fanIndex >= 0 && fanIndex < count else { return false }
+        guard let info = getFanInfo(index: fanIndex) else { return false }
+        let clampedRPM = max(info.minRPM, min(info.maxRPM, rpm))
+        let bytes = encodeFPE2(clampedRPM)
         return writeKey("F\(fanIndex)Tg", bytes: bytes)
     }
 

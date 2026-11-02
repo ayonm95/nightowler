@@ -126,6 +126,7 @@ public final class IPCServer: @unchecked Sendable {
             }
         }
 
+        let oldUmask = umask(0o077)
         let addrLen = socklen_t(MemoryLayout<sockaddr_un>.size)
         var bindRes: Int32 = -1
         withUnsafePointer(to: &addr) { ptr in
@@ -133,6 +134,7 @@ public final class IPCServer: @unchecked Sendable {
                 bindRes = bind(fd, sa, addrLen)
             }
         }
+        _ = umask(oldUmask)
 
         guard bindRes == 0 else {
             print("Failed to bind IPC socket: \(errno)")
@@ -140,7 +142,7 @@ public final class IPCServer: @unchecked Sendable {
             return
         }
 
-        // Set socket permissions for current user
+        // Enforce strict socket permissions for current user
         chmod(IPCServer.socketPath, 0o600)
 
         guard listen(fd, 16) == 0 else {
