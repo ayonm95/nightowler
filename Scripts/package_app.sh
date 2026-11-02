@@ -7,7 +7,8 @@ echo "🔨 Building release binaries with swift build -c release..."
 swift build -c release
 
 BIN_DIR=".build/release"
-APP_DIR="dist/Nightowler.app"
+DIST_DIR="dist.noindex"
+APP_DIR="${DIST_DIR}/Nightowler.app"
 CONTENTS_DIR="${APP_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 RESOURCES_DIR="${CONTENTS_DIR}/Resources"
@@ -15,13 +16,22 @@ HELPERS_DIR="${CONTENTS_DIR}/Library/HelperTools"
 DAEMONS_DIR="${CONTENTS_DIR}/Library/LaunchDaemons"
 
 echo "📦 Assembling Nightowler.app bundle..."
-rm -rf "dist"
-mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}" "${HELPERS_DIR}" "${DAEMONS_DIR}" "dist/bin"
+rm -rf "${DIST_DIR}" dist
+mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}" "${HELPERS_DIR}" "${DAEMONS_DIR}" "${DIST_DIR}/bin"
+touch "${DIST_DIR}/.metadata_never_index"
+ln -sf "${DIST_DIR}" "dist"
 
 # Copy binaries
 cp "${BIN_DIR}/NightowlerApp" "${MACOS_DIR}/Nightowler"
 cp "${BIN_DIR}/NightowlerHelper" "${HELPERS_DIR}/NightowlerHelper"
-cp "${BIN_DIR}/nightowler" "dist/bin/nightowler"
+cp "${BIN_DIR}/nightowler" "${DIST_DIR}/bin/nightowler"
+cp "${BIN_DIR}/nightowler" "${MACOS_DIR}/nightowler-cli"
+
+# Strip debug symbols
+strip -S "${MACOS_DIR}/Nightowler" || true
+strip -S "${HELPERS_DIR}/NightowlerHelper" || true
+strip -S "dist/bin/nightowler" || true
+strip -S "${MACOS_DIR}/nightowler-cli" || true
 
 # Copy AppIcon
 if [ -f "Resources/AppIcon.icns" ]; then
@@ -87,11 +97,24 @@ cat << 'EOF' > "${DAEMONS_DIR}/com.nightowler.app.helper.plist"
 </plist>
 EOF
 
-# Create CLI installer wrapper
+# Update /Applications/Nightowler.app if already present
+if [ -d "/Applications/Nightowler.app" ]; then
+    echo "🔄 Syncing release build to /Applications/Nightowler.app..."
+    rm -rf "/Applications/Nightowler.app"
+    cp -R "${APP_DIR}" "/Applications/Nightowler.app"
+fi
+
+# Create resilient CLI installer wrapper
 mkdir -p "$HOME/.local/bin"
-cat << EOF > "$HOME/.local/bin/nightowler"
+cat << 'EOF' > "$HOME/.local/bin/nightowler"
 #!/bin/sh
-exec "$(pwd)/dist/bin/nightowler" "\$@"
+if [ -x "/Applications/Nightowler.app/Contents/MacOS/nightowler-cli" ]; then
+    exec "/Applications/Nightowler.app/Contents/MacOS/nightowler-cli" "$@"
+elif [ -x "$HOME/Downloads/all projects/nightowler/dist/bin/nightowler" ]; then
+    exec "$HOME/Downloads/all projects/nightowler/dist/bin/nightowler" "$@"
+elif [ -x "$HOME/Downloads/lidrunrea/dist/bin/nightowler" ]; then
+    exec "$HOME/Downloads/lidrunrea/dist/bin/nightowler" "$@"
+fi
 EOF
 chmod +x "$HOME/.local/bin/nightowler"
 

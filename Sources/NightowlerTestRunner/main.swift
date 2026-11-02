@@ -124,4 +124,17 @@ let smc = SMCController.shared
 print("  ℹ️ SMC Available: \(smc.isAvailable), Fan Count: \(smc.getFanCount()), CPU Temp: \(smc.getCPUTemperature() ?? 0)°C")
 assertTest(true, "Hardware query completed without crashes")
 
+// Test 11: Clamshell Manager & Kernel Sleep State
+print("\n[11] Testing Clamshell Manager & Kernel Sleep State")
+let clamshell = ClamshellManager.shared
+let enableResult = clamshell.enableClosedLid()
+if enableResult.success {
+    assertTest(clamshell.isSleepActuallyDisabled(), "Kernel SleepDisabled is verified as 1")
+    _ = clamshell.disableClosedLid()
+    assertTest(!clamshell.isSleepActuallyDisabled(), "Kernel SleepDisabled restored to 0")
+} else {
+    print("  ℹ️ Clamshell enable requires root/sudo: \(enableResult.error ?? "")")
+    assertTest(!clamshell.isClamshellActive, "Clamshell accurately reports inactive when unprivileged")
+}
+
 print("\n🎉 ALL TESTS PASSED! Nightowler verification 100% complete.")

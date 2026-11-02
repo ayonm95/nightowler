@@ -6,6 +6,16 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificat
     private var menuBar: MenuBarController?
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
+        // Enforce single instance: prevent duplicate menu bar icons and processes
+        let currentPID = ProcessInfo.processInfo.processIdentifier
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.nightowler.app"
+        let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+        let otherInstances = runningApps.filter { $0.processIdentifier != currentPID }
+        if !otherInstances.isEmpty {
+            fputs("Nightowler is already running (PID: \(otherInstances.first?.processIdentifier ?? 0)). Exiting duplicate instance.\n", stderr)
+            exit(0)
+        }
+
         // Run as menu-bar accessory app (no Dock icon)
         NSApp.setActivationPolicy(.accessory)
 

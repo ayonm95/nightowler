@@ -433,7 +433,10 @@ public final class AppState: ObservableObject, @unchecked Sendable {
             } else {
                 self.setClamshell(enabled: !self.isClamshellActive)
             }
-            return IPCResponse(ok: true, message: "Clamshell mode updated")
+            if sub == "on" && !self.isClamshellActive {
+                return IPCResponse(ok: false, message: self.whyStoppedReason.isEmpty ? "Failed to enable clamshell sleep prevention. Run 'nightowler setup'." : self.whyStoppedReason, clamshellActive: false)
+            }
+            return IPCResponse(ok: true, message: "Clamshell mode: \(self.isClamshellActive ? "ON" : "OFF")", clamshellActive: self.isClamshellActive)
 
         case "autowatch":
             let sub = req.args?.first?.lowercased() ?? "toggle"

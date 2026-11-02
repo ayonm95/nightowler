@@ -21,6 +21,7 @@ Daemon commands (Nightowler menu app running):
   nightowler unwatch <pattern...> Remove process patterns from watch list
   nightowler patterns             List currently watched process patterns
   nightowler timer <seconds>      Set keep-awake duration in seconds
+  nightowler setup                Configure passwordless clamshell permissions
   nightowler notify "<title>" ["<body>"]
                                   Dispatch local alert & configured webhooks
   nightowler sleep [--force]      Put Mac to sleep safely. Refuses if tasks run;
@@ -240,6 +241,28 @@ case "notify":
 case "ping":
     guard let resp = sendDaemonCommand(req: IPCRequest(cmd: "ping")) else { exit(1) }
     print(resp.message ?? "pong")
+
+case "setup":
+    print("Setting up passwordless clamshell permissions for Nightowler...")
+    let sudoersContent = "%admin ALL=(ALL) NOPASSWD: /usr/bin/pmset -a disablesleep 1, /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset sleepnow\n"
+    let tmpPath = "/tmp/nightowler_sudoers"
+    do {
+        try sudoersContent.write(toFile: tmpPath, atomically: true, encoding: .utf8)
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")
+        proc.arguments = ["/bin/sh", "-c", "install -m 0440 /tmp/nightowler_sudoers /etc/sudoers.d/nightowler && rm -f /tmp/nightowler_sudoers"]
+        try proc.run()
+        proc.waitUntilExit()
+        if proc.terminationStatus == 0 {
+            print("✅ Success: Clamshell permissions configured! You can now use closed-lid mode seamlessly.")
+        } else {
+            print("❌ Setup failed with code \(proc.terminationStatus)")
+            exit(1)
+        }
+    } catch {
+        print("❌ Error: \(error.localizedDescription)")
+        exit(1)
+    }
 
 default:
     print("Unknown command: \(command). Run `nightowler help` for usage.")

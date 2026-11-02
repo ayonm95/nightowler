@@ -2,4 +2,7 @@
 .swiftpm/
 .DS_Store
 *.xcuserstate
+dist.noindex/
+dist
+
 

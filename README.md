@@ -147,9 +147,20 @@ Run the automated packaging script to compile optimized release binaries and con
 
 This compiles all targets, builds `dist/Nightowler.app`, installs the icon assets, and symlinks `nightowler` into `~/.local/bin/nightowler`.
 
-### 2. Launch the Menu Bar App
+### 2. Configure Permissions (Optional for Passwordless Clamshell)
+
+To allow Nightowler to toggle closed-lid sleep prevention seamlessly without interactive admin password prompts:
 
 ```bash
+nightowler setup
+```
+*(Writes `/etc/sudoers.d/nightowler` allowing passwordless `/usr/bin/pmset -a disablesleep 1/0`)*
+
+### 3. Launch the Menu Bar App
+
+```bash
+open /Applications/Nightowler.app
+# or
 open dist/Nightowler.app
 ```
 
@@ -206,6 +217,9 @@ nightowler fan auto       # System dynamic curve
 nightowler fan boost      # 70% fan speed
 nightowler fan high       # 85% fan speed
 nightowler fan max        # 100% maximum dissipation
+
+# One-Time Permission Setup (Passwordless Clamshell)
+nightowler setup
 
 # Dispatch remote test alerts
 nightowler notify "Training Complete" "Loss converged to 0.0124 after 100 epochs."
@@ -281,6 +295,10 @@ Sample output:
 [10] Testing SMC & Hardware
   ℹ️ SMC Available: true, Fan Count: 0, CPU Temp: 0.0°C
   ✅ PASS: Hardware query completed without crashes
+
+[11] Testing Clamshell Manager & Kernel Sleep State
+  ✅ PASS: Kernel SleepDisabled is verified as 1
+  ✅ PASS: Kernel SleepDisabled restored to 0
 
 🎉 ALL TESTS PASSED! Nightowler verification 100% complete.
 ```
