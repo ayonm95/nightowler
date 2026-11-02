@@ -137,15 +137,16 @@ Sources/
 
 ## 🚀 Quick Start
 
-### 1. Build and Assemble the App Bundle
-
-Run the automated packaging script to compile optimized release binaries and construct `Nightowler.app`:
+### 1. Clone & Build
 
 ```bash
+# Clone repository
+git clone https://github.com/ayonm95/nightowler.git
+cd nightowler
+
+# Package release binaries and install CLI to ~/.local/bin
 ./Scripts/package_app.sh
 ```
-
-This compiles all targets, builds `dist/Nightowler.app`, installs the icon assets, and symlinks `nightowler` into `~/.local/bin/nightowler`.
 
 ### 2. Configure Permissions (Optional for Passwordless Clamshell)
 
@@ -315,4 +316,5 @@ Sample output:
 
 ## 📄 License
 
-Nightowler is released under the **MIT License**. Created with care for developers, researchers, and the nocturnal AI community.
+Nightowler is open-source software released under the **[MIT License](LICENSE)**.  
+Copyright © 2026 **Ayon Moitra**. Engineered natively for developers, researchers, and the nocturnal AI community.
