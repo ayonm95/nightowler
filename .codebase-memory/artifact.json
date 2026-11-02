@@ -1,0 +1,11 @@
+{
+    "schema_version": 2,
+    "commit": "aeb6748e42bb366de347ba84ce46fbb7476546ba",
+    "indexed_at": "2026-11-02T05:16:13Z",
+    "project": "Nightowler",
+    "nodes": 661,
+    "edges": 2178,
+    "original_size": 2883584,
+    "compressed_size": 295446,
+    "compression_level": 9
+}

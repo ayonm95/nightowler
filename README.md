@@ -78,6 +78,14 @@ Unattended background execution requires uncompromising hardware protection:
 - Instant push notifications when long-running tasks terminate or safety thresholds trigger.
 - Native integration with **Telegram Bot API**, **Discord Webhooks**, **Slack Incoming Webhooks**, and arbitrary **JSON HTTP Endpoints**.
 
+### 🦉 Minimalist Vector Owl Menu Bar Companion
+- **Adaptive Vector Rendering**: Clean, high-contrast monochrome owl silhouette rendered programmatically via `CGContext` vector geometry.
+- **Dynamic State Feedback**:
+  - **Awake & Vigilant (Wide Open Eyes)**: Signals active wake locks, background workloads, or timer sessions.
+  - **Nocturnal Rest (Sleepy Closed Eyes)**: Indicates the Mac is sleeping normally with zero wake locks.
+  - **Clamshell Crown Badge**: Displays a subtle forehead indicator when running with the MacBook display closed.
+- **Native Menu Bar Appearance**: Configured with `isTemplate = true` to seamlessly match macOS light/dark menu bar modes and ProMotion Liquid Retina displays.
+
 ---
 
 ## 🏗️ Architecture & Internals

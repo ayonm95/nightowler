@@ -62,21 +62,120 @@ public final class MenuBarController: NSObject, @unchecked Sendable {
     private func updateIcon() {
         guard let button = statusItem.button else { return }
 
-        let symbolName: String
-        if state.isClamshellActive {
-            symbolName = "lock.laptopcomputer"
-        } else if state.mode == .on {
-            symbolName = "eye.fill"
-        } else if state.mode == .autoWatch {
-            symbolName = state.activeTasks.isEmpty ? "sparkles" : "bolt.shield.fill"
-        } else {
-            symbolName = "moon.zzz"
-        }
+        let isAwake = state.mode == .on || state.isAssertionActive || (state.mode == .autoWatch && !state.activeTasks.isEmpty)
+        let isClamshell = state.isClamshellActive
 
-        let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
-        let img = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Nightowler")?
-            .withSymbolConfiguration(config)
-        img?.isTemplate = true
-        button.image = img
+        let icon = OwlIconGenerator.makeIcon(isAwake: isAwake, isClamshell: isClamshell)
+        button.image = icon
+    }
+}
+
+// MARK: - Minimalist Vector Owl Menu Bar Icon Generator
+
+public enum OwlIconGenerator {
+    public static func makeIcon(isAwake: Bool, isClamshell: Bool) -> NSImage {
+        let size = NSSize(width: 18, height: 18)
+        let image = NSImage(size: size, flipped: false) { rect in
+            guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
+
+            ctx.saveGState()
+
+            // 1. Owl Head & Ear Tufts Silhouette
+            let path = CGMutablePath()
+            // Bottom chin
+            path.move(to: CGPoint(x: 9.0, y: 2.2))
+            // Right lower body & cheek
+            path.addCurve(
+                to: CGPoint(x: 16.0, y: 8.5),
+                control1: CGPoint(x: 13.2, y: 2.2),
+                control2: CGPoint(x: 16.0, y: 5.2)
+            )
+            // Right ear tuft (tip)
+            path.addCurve(
+                to: CGPoint(x: 14.8, y: 15.8),
+                control1: CGPoint(x: 16.0, y: 12.0),
+                control2: CGPoint(x: 15.5, y: 14.8)
+            )
+            // Top head dip (between ear tufts)
+            path.addCurve(
+                to: CGPoint(x: 3.2, y: 15.8),
+                control1: CGPoint(x: 11.5, y: 13.6),
+                control2: CGPoint(x: 6.5, y: 13.6)
+            )
+            // Left ear tuft down to left cheek
+            path.addCurve(
+                to: CGPoint(x: 2.0, y: 8.5),
+                control1: CGPoint(x: 2.5, y: 14.8),
+                control2: CGPoint(x: 2.0, y: 12.0)
+            )
+            // Left lower body back to chin
+            path.addCurve(
+                to: CGPoint(x: 9.0, y: 2.2),
+                control1: CGPoint(x: 2.0, y: 5.2),
+                control2: CGPoint(x: 4.8, y: 2.2)
+            )
+            path.closeSubpath()
+
+            // Fill solid silhouette
+            ctx.addPath(path)
+            ctx.setFillColor(NSColor.black.cgColor)
+            ctx.fillPath()
+
+            // 2. Cutouts (using destination-out so it cleanly cuts through the silhouette)
+            ctx.setBlendMode(.destinationOut)
+
+            if isAwake {
+                // Wide open alert eyes
+                let leftEye = CGRect(x: 4.2, y: 7.2, width: 3.4, height: 3.4)
+                let rightEye = CGRect(x: 10.4, y: 7.2, width: 3.4, height: 3.4)
+                ctx.fillEllipse(in: leftEye)
+                ctx.fillEllipse(in: rightEye)
+            } else {
+                // Sleepy curved eye slits
+                let leftSleep = CGMutablePath()
+                leftSleep.move(to: CGPoint(x: 4.2, y: 8.8))
+                leftSleep.addQuadCurve(to: CGPoint(x: 7.4, y: 8.8), control: CGPoint(x: 5.8, y: 7.5))
+
+                let rightSleep = CGMutablePath()
+                rightSleep.move(to: CGPoint(x: 10.6, y: 8.8))
+                rightSleep.addQuadCurve(to: CGPoint(x: 13.8, y: 8.8), control: CGPoint(x: 12.2, y: 7.5))
+
+                ctx.setLineWidth(1.1)
+                ctx.setLineCap(.round)
+                ctx.addPath(leftSleep)
+                ctx.addPath(rightSleep)
+                ctx.strokePath()
+            }
+
+            // Downward beak cutout
+            let beakPath = CGMutablePath()
+            beakPath.move(to: CGPoint(x: 8.0, y: 7.6))
+            beakPath.addLine(to: CGPoint(x: 10.0, y: 7.6))
+            beakPath.addLine(to: CGPoint(x: 9.0, y: 5.2))
+            beakPath.closeSubpath()
+            ctx.addPath(beakPath)
+            ctx.fillPath()
+
+            // Clamshell badge (crown dot on forehead)
+            if isClamshell {
+                let crownDot = CGRect(x: 8.2, y: 13.0, width: 1.6, height: 1.6)
+                ctx.fillEllipse(in: crownDot)
+            }
+
+            // 3. For awake mode: restore normal blend mode and add pupils
+            if isAwake {
+                ctx.setBlendMode(.normal)
+                ctx.setFillColor(NSColor.black.cgColor)
+                let leftPupil = CGRect(x: 5.3, y: 8.3, width: 1.2, height: 1.2)
+                let rightPupil = CGRect(x: 11.5, y: 8.3, width: 1.2, height: 1.2)
+                ctx.fillEllipse(in: leftPupil)
+                ctx.fillEllipse(in: rightPupil)
+            }
+
+            ctx.restoreGState()
+            return true
+        }
+        image.isTemplate = true
+        return image
     }
 }
